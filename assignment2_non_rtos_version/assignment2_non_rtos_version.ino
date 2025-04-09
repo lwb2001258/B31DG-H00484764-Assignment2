@@ -24,7 +24,7 @@ int executeTimes[5] = { 600, 350, 2800, 2200, 500 };
 int cycleList[5] = { 4000, 3000, 10000, 10000, 5000 };
 bool doneList[5] = { false, false, false, false, false };
 int count = 0;
-void frame() {
+void calculateSlackTime() {
   count += 1;
   unsigned long now = micros();
   unsigned long totalTime = now - monitor.getTimeStart();
@@ -62,17 +62,20 @@ void setup() {
   digitalWrite(BUTTON_LED_PIN, LOW);
   pinMode(BUTTON_PIN, INPUT_PULLDOWN);
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPressedHandle, RISING);
-  ticker1.attach_ms(1, frame);
+  ticker1.attach_ms(1, calculateSlackTime);
   monitor.startMonitoring();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if (ButtonLedState){
-    digitalWrite(BUTTON_LED_PIN, HIGH);
-  }else{
-    digitalWrite(BUTTON_LED_PIN, LOW);
-  }
+  // if (ButtonLedState){
+  //   digitalWrite(BUTTON_LED_PIN, HIGH);
+  // }else{
+  //   digitalWrite(BUTTON_LED_PIN, LOW);
+  // }
+  digitalWrite(BUTTON_LED_PIN, ButtonLedState ? HIGH : LOW);
+
+ 
   int jobIndex = 10;
 
 
@@ -83,7 +86,7 @@ void loop() {
       }
     }
   }
-  // Serial.println(jobIndex);
+
   switch (jobIndex) {
     case 0: JobTask1(); break;
     case 1: JobTask2(); break;
@@ -92,6 +95,8 @@ void loop() {
     case 4: JobTask5(); break;
     default: break;
   }
+  // doneList[jobIndex] = true;
+  // jobCounts[jobIndex] = jobCounts[jobIndex] + 1;
 }
 
 
