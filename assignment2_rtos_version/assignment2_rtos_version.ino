@@ -46,7 +46,7 @@ volatile bool doneList[5] = { false, false, false, false, false };
 int count = 0;
 
 // -------------------- SLACK TIME CALCULATION FUNCTION --------------------
-void updateSlackTime() {
+void updateSlackTimeAndSetButtonLED_PIN() {
   count += 1;
   unsigned long now = esp_timer_get_time();
   unsigned long totalTime = now - monitor.getTimeStart();
@@ -71,17 +71,17 @@ void IRAM_ATTR buttonPressedHandle() {
 }
 
 // -------------------- SLACK TIME UPDATER TASK --------------------
-void slackTimeUpdate(void *pvParameters) {
+void ScheduleSlackTimeUpdateAndSetButtonLed(void *pvParameters) {
   const TickType_t interval = pdMS_TO_TICKS(1);  // run every 1ms
   TickType_t lastWakeTime = xTaskGetTickCount();
   while (true) {
-    updateSlackTime();
+    updateSlackTimeAndSetButtonLED_PIN();
     vTaskDelayUntil(&lastWakeTime, interval);
   }
 }
 
 // -------------------- SCHEDULER TASK 1: selects task 0 or 1 --------------------
-void schedulerTask1(void *param) {
+void schedulerTaskCore1(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     volatile int jobIndex = 10;
@@ -103,7 +103,7 @@ void schedulerTask1(void *param) {
 }
 
 // -------------------- SCHEDULER TASK 2: selects task 2/3/4 --------------------
-void schedulerTask2(void *param) {
+void schedulerTaskCore0(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     volatile int jobIndex = 10;
@@ -143,14 +143,14 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPressedHandle, RISING);
 
   // Create tasks
-  xTaskCreatePinnedToCore(slackTimeUpdate, "slackTimeUpdate", 2048, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(ScheduleSlackTimeUpdateAndSetButtonLed, "ScheduleSlackTimeUpdateAndSetButtonLed", 2048, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(JobTask1, "Job1", 4096, NULL, 1, &jobHandles[0], 1);
   xTaskCreatePinnedToCore(JobTask2, "Job2", 4096, NULL, 1, &jobHandles[1], 1);
   xTaskCreatePinnedToCore(JobTask3, "Job3", 4096, NULL, 1, &jobHandles[2], 0);
   xTaskCreatePinnedToCore(JobTask4, "Job4", 4096, NULL, 1, &jobHandles[3], 0);
   xTaskCreatePinnedToCore(JobTask5, "Job5", 4096, NULL, 1, &jobHandles[4], 1);
-  xTaskCreatePinnedToCore(schedulerTask1, "schedulerTask1", 4096, NULL, 1, &jobHandles[5], 1);
-  xTaskCreatePinnedToCore(schedulerTask2, "schedulerTask2", 4096, NULL, 1, &jobHandles[6], 1);
+  xTaskCreatePinnedToCore(schedulerTaskCore1, "schedulerTaskCore1", 4096, NULL, 1, &jobHandles[5], 1);
+  xTaskCreatePinnedToCore(schedulerTaskCore0, "schedulerTaskCore0", 4096, NULL, 1, &jobHandles[6], 1);
 
   // Kickstart scheduler tasks
   xTaskNotifyGive(jobHandles[5]);
