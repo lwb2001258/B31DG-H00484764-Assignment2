@@ -46,7 +46,7 @@ volatile bool doneList[5] = { false, false, false, false, false };
 int count = 0;
 
 // -------------------- SLACK TIME CALCULATION FUNCTION --------------------
-void updateSlackTimeAndSetButtonLED_PIN() {
+void updateSlackTime() {
   count += 1;
   unsigned long now = esp_timer_get_time();
   unsigned long totalTime = now - monitor.getTimeStart();
@@ -56,7 +56,7 @@ void updateSlackTimeAndSetButtonLED_PIN() {
       slackTimes[i] = periodList[i] - totalTime % periodList[i] - executeTimes[i];
     }
   }
-  digitalWrite(BUTTON_LED_PIN, ButtonLedState ? HIGH : LOW);
+  
 }
 
 // -------------------- BUTTON ISR --------------------
@@ -65,17 +65,18 @@ void IRAM_ATTR buttonPressedHandle() {
   unsigned long currentTime = millis();
   if (currentTime - lastButtonInterruptTime > DEBOUNCE_DELAY) {
     ButtonLedState = !ButtonLedState;
+    digitalWrite(BUTTON_LED_PIN, ButtonLedState ? HIGH : LOW);
     monitor.doWork();  // Trigger monitor work in response to button
     lastButtonInterruptTime = currentTime;
   }
 }
 
 // -------------------- SLACK TIME UPDATER TASK --------------------
-void ScheduleSlackTimeUpdateAndSetButtonLed(void *pvParameters) {
+void ScheduleSlackTimeUpdate(void *pvParameters) {
   const TickType_t interval = pdMS_TO_TICKS(1);  // run every 1ms
   TickType_t lastWakeTime = xTaskGetTickCount();
   while (true) {
-    updateSlackTimeAndSetButtonLED_PIN();
+    updateSlackTime();
     vTaskDelayUntil(&lastWakeTime, interval);
   }
 }
@@ -158,7 +159,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPressedHandle, RISING);
 
   // Create tasks
-  xTaskCreatePinnedToCore(ScheduleSlackTimeUpdateAndSetButtonLed, "ScheduleSlackTimeUpdateAndSetButtonLed", 2048, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(ScheduleSlackTimeUpdate, "ScheduleSlackTimeUpdate", 2048, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(JobTask1, "Job1", 4096, NULL, 3, &jobHandles[0], 1);
   xTaskCreatePinnedToCore(JobTask2, "Job2", 4096, NULL, 3, &jobHandles[1], 1);
   xTaskCreatePinnedToCore(JobTask3, "Job3", 4096, NULL, 3, &jobHandles[2], 0);
