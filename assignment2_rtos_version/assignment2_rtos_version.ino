@@ -146,8 +146,8 @@ void setup() {
   xTaskCreatePinnedToCore(ScheduleSlackTimeUpdateAndSetButtonLed, "ScheduleSlackTimeUpdateAndSetButtonLed", 2048, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(JobTask1, "Job1", 4096, NULL, 1, &jobHandles[0], 1);
   xTaskCreatePinnedToCore(JobTask2, "Job2", 4096, NULL, 1, &jobHandles[1], 1);
-  xTaskCreatePinnedToCore(JobTask3, "Job3", 4096, NULL, 1, &jobHandles[2], 0);
-  xTaskCreatePinnedToCore(JobTask4, "Job4", 4096, NULL, 1, &jobHandles[3], 0);
+  xTaskCreatePinnedToCore(JobTask3, "Job3", 4096, NULL, 3, &jobHandles[2], 0);
+  xTaskCreatePinnedToCore(JobTask4, "Job4", 4096, NULL, 3, &jobHandles[3], 0);
   xTaskCreatePinnedToCore(JobTask5, "Job5", 4096, NULL, 1, &jobHandles[4], 1);
   xTaskCreatePinnedToCore(schedulerTaskCore1, "schedulerTaskCore1", 4096, NULL, 1, &jobHandles[5], 1);
   xTaskCreatePinnedToCore(schedulerTaskCore0, "schedulerTaskCore0", 4096, NULL, 1, &jobHandles[6], 1);
