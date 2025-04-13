@@ -33,7 +33,7 @@ int periodList[5] = { 4000, 3000, 10000, 10000, 5000 };              // Task exe
 volatile bool doneList[5] = { false, false, false, false, false };  // Track whether each task has been completed in current cycle
 
 // -------------------- SLACK TIME CALCULATION FUNCTION --------------------
-void calculateSlackTime() {
+void updateSlackTime() {
   /*
     Updates slack time for each task based on current time.
     Slack = time until deadline - estimated execution time.
@@ -82,7 +82,7 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPressedHandle, RISING);
 
   // Start slack time update every 1 ms
-  ticker1.attach_ms(1, calculateSlackTime);
+  ticker1.attach_ms(1, updateSlackTime);
 
   // Start the monitor
   monitor.startMonitoring();
