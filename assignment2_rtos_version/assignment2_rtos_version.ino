@@ -95,9 +95,18 @@ void schedulerTaskCore1(void *param) {
     }
 
     switch (jobIndex) {
-      case 0: xTaskNotifyGive(jobHandles[0]); taskYIELD(); break;
-      case 1: xTaskNotifyGive(jobHandles[1]); taskYIELD(); break;
-      default: xTaskNotifyGive(jobHandles[5]); taskYIELD(); break;
+      case 0:
+        xTaskNotifyGive(jobHandles[0]);
+        taskYIELD();
+        break;
+      case 1:
+        xTaskNotifyGive(jobHandles[1]);
+        taskYIELD();
+        break;
+      default:
+        xTaskNotifyGive(jobHandles[5]);
+        taskYIELD();
+        break;
     }
   }
 }
@@ -119,8 +128,14 @@ void schedulerTaskCore0(void *param) {
     switch (jobIndex) {
       case 2: xTaskNotifyGive(jobHandles[2]); break;
       case 3: xTaskNotifyGive(jobHandles[3]); break;
-      case 4: xTaskNotifyGive(jobHandles[4]); taskYIELD(); break;
-      default: xTaskNotifyGive(jobHandles[6]); taskYIELD(); break;
+      case 4:
+        xTaskNotifyGive(jobHandles[4]);
+        taskYIELD();
+        break;
+      default:
+        xTaskNotifyGive(jobHandles[6]);
+        taskYIELD();
+        break;
     }
   }
 }
@@ -162,6 +177,9 @@ void setup() {
 // -------------------- LOOP --------------------
 void loop() {
   // All logic handled by tasks
+  UBaseType_t highWater = uxTaskGetStackHighWaterMark(NULL);
+  Serial.printf("Remaining stack: %u\n", highWater);
+  delay(1000);
 }
 
 // -------------------- JOB TASKS --------------------
@@ -172,9 +190,12 @@ void JobTask1(void *param) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(1);
 
-    digitalWrite(OUTPUT_PIN_1, HIGH); delayMicroseconds(250);
-    digitalWrite(OUTPUT_PIN_1, LOW);  delayMicroseconds(50);
-    digitalWrite(OUTPUT_PIN_1, HIGH); delayMicroseconds(300);
+    digitalWrite(OUTPUT_PIN_1, HIGH);
+    delayMicroseconds(250);
+    digitalWrite(OUTPUT_PIN_1, LOW);
+    delayMicroseconds(50);
+    digitalWrite(OUTPUT_PIN_1, HIGH);
+    delayMicroseconds(300);
     digitalWrite(OUTPUT_PIN_1, LOW);
 
     doneList[0] = true;
@@ -191,9 +212,12 @@ void JobTask2(void *param) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(2);
 
-    digitalWrite(OUTPUT_PIN_2, HIGH); delayMicroseconds(100);
-    digitalWrite(OUTPUT_PIN_2, LOW);  delayMicroseconds(50);
-    digitalWrite(OUTPUT_PIN_2, HIGH); delayMicroseconds(200);
+    digitalWrite(OUTPUT_PIN_2, HIGH);
+    delayMicroseconds(100);
+    digitalWrite(OUTPUT_PIN_2, LOW);
+    delayMicroseconds(50);
+    digitalWrite(OUTPUT_PIN_2, HIGH);
+    delayMicroseconds(200);
     digitalWrite(OUTPUT_PIN_2, LOW);
 
     doneList[1] = true;
