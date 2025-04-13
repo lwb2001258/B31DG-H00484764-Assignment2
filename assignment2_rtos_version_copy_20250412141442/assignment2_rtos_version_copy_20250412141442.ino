@@ -30,7 +30,7 @@ TaskHandle_t jobHandles[7];
 volatile int jobIndex = 10;
 volatile bool jobDone = true;
 
-static int jobIds0[] = { 0, 1, 4 };
+static int jobIds0[] = { 0, 1, 4};
 static int jobIds1[] = { 2, 3 };
 volatile int scheduledCount = 0;
 
@@ -103,12 +103,13 @@ void schedulerTask1(void *param) {
     // Serial.print("jobIndex:");
     // Serial.println(jobIndex);
     switch (jobIndex) {
-      case 0: xTaskNotifyGive(jobHandles[0]);  break;
-      case 1: xTaskNotifyGive(jobHandles[1]);   break;
-      case 4: xTaskNotifyGive(jobHandles[4]); break;
+      case 0: xTaskNotifyGive(jobHandles[0]); taskYIELD();  break;
+      case 1: xTaskNotifyGive(jobHandles[1]); taskYIELD();  break;
+      case 4: xTaskNotifyGive(jobHandles[4]); taskYIELD();break;
       default:
         // Serial.println("default");
         xTaskNotifyGive(jobHandles[5]);
+        taskYIELD();
         break;
     }
   }
@@ -131,6 +132,7 @@ void schedulerTask2(void *param) {
       case 3: xTaskNotifyGive(jobHandles[3]); break;
       default:
         xTaskNotifyGive(jobHandles[6]);
+        taskYIELD();
         break;
     }
   }
@@ -155,16 +157,14 @@ void setup() {
   mutex0 = xSemaphoreCreateBinary();
 
 
-  xTaskCreatePinnedToCore(slackTimeUpdate, "slackTimeUpdate", 2048, NULL, 3, NULL, 1);
-  xTaskCreatePinnedToCore(JobTask1, "Job1", 4096, NULL, 1, &jobHandles[0], 1);
-  xTaskCreatePinnedToCore(JobTask2, "Job2", 4096, NULL, 1, &jobHandles[1], 1);
+  xTaskCreatePinnedToCore(slackTimeUpdate, "slackTimeUpdate", 2048, NULL, 1, NULL, 1);
+  xTaskCreatePinnedToCore(JobTask1, "Job1", 4096, NULL, 3, &jobHandles[0], 1);
+  xTaskCreatePinnedToCore(JobTask2, "Job2", 4096, NULL, 3, &jobHandles[1], 1);
   xTaskCreatePinnedToCore(JobTask3, "Job3", 4096, NULL, 3, &jobHandles[2], 0);
   xTaskCreatePinnedToCore(JobTask4, "Job4", 4096, NULL, 3, &jobHandles[3], 0);
-  xTaskCreatePinnedToCore(JobTask5, "Job5", 4096, NULL, 1, &jobHandles[4], 1);
+  xTaskCreatePinnedToCore(JobTask5, "Job5", 4096, NULL, 3, &jobHandles[4], 1);
   xTaskCreatePinnedToCore(schedulerTask1, "schedulerTask1", 4096, NULL, 1, &jobHandles[5], 1);
   xTaskCreatePinnedToCore(schedulerTask2, "schedulerTask2", 4096, NULL, 1, &jobHandles[6], 1);
-  xSemaphoreGive(mutex);
-  xSemaphoreGive(mutex0);
   xTaskNotifyGive(jobHandles[5]);
   xTaskNotifyGive(jobHandles[6]);
   monitor.startMonitoring();
@@ -178,10 +178,7 @@ void loop() {
 
 void JobTask1(void *param) {
   while (1) {
-    // Serial.println(micros());
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    xSemaphoreTake(mutex, portMAX_DELAY);
-    // Serial.println(micros());
     monitor.jobStarted(1);
     digitalWrite(OUTPUT_PIN_1, HIGH);
     delayMicroseconds(250);  // HIGH for 250μs
@@ -195,28 +192,14 @@ void JobTask1(void *param) {
     monitor.jobEnded(1);
     xTaskNotifyGive(jobHandles[5]);
     taskYIELD();
-    xSemaphoreGive(mutex);
-    // vTaskDelay(pdMS_TO_TICKS(1));
+    taskYIELD();
   }
 }
 
 // Task 2, takes 1.8ms
 void JobTask2(void *param) {
   while (1) {
-    // Serial.println("task 2");
-    unsigned long now = micros();
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    // Serial.println("task 2 notify");
-    // Serial.printf("notify:");
-    // Serial.println(micros() - now);
-    xSemaphoreTake(mutex, portMAX_DELAY);
-    // Serial.printf("Semaphore:");
-    // Serial.println(micros() - now);
-    // Serial.println("task 2 Semaphor");
-    // ex_num++;
-    // Serial.printf("2:");
-    // Serial.println(ex_num);
-    // Serial.println(2);
     monitor.jobStarted(2);
     digitalWrite(OUTPUT_PIN_2, HIGH);
     delayMicroseconds(100);
@@ -230,8 +213,6 @@ void JobTask2(void *param) {
     monitor.jobEnded(2);
     xTaskNotifyGive(jobHandles[5]);
     taskYIELD();
-    xSemaphoreGive(mutex);
-    // vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 
@@ -239,20 +220,9 @@ void JobTask2(void *param) {
 // Task 3, takes 1ms
 void JobTask3(void *param) {
   while (1) {
-    // Serial.println("task 3");
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    // Serial.println("task 3 notify");
-    // xSemaphoreTake(mutex, portMAX_DELAY);
-    xSemaphoreTake(mutex0, portMAX_DELAY);
-    // Serial.println("task 3 Semaphor");
-    // ex_num++;
-    // Serial.printf("3:");
-    // Serial.println(ex_num);
     monitor.jobStarted(3);
-    int count = 0;
-    // unsigned long start = micros();
     while (1) {
-      // taskENTER_CRITICAL(&myMux);
       bool input_state = digitalRead(INPUT_PIN_F1);
       if (last_F1_input_state == LOW && input_state == LOW) {
         last_F1_input_state = input_state;
@@ -278,7 +248,6 @@ void JobTask3(void *param) {
           } else {
             digitalWrite(LED_PIN, LOW);
           }
-          // taskEXIT_CRITICAL(&myMux);
           break;
         }
       }
@@ -287,23 +256,14 @@ void JobTask3(void *param) {
     jobCounts[2] = jobCounts[2] + 1;
     monitor.jobEnded(3);
     xTaskNotifyGive(jobHandles[6]);
-    // Serial.println("trigger schedule...");
-    // taskYIELD();
-    xSemaphoreGive(mutex0);
-    // Serial.println("release mutex 0");
-
-    // vTaskDelay(pdMS_TO_TICKS(1));
+    taskYIELD();
   }
 }
 
 // Task 4, takes about 600-2200us
 void JobTask4(void *param) {
   while (1) {
-    // Serial.println("task 4");
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    // Serial.println("task 4 notify");
-    xSemaphoreTake(mutex0, portMAX_DELAY);
-    // Serial.println("task 4 Semaphor");
     monitor.jobStarted(4);
     int count = 0;
     while (1) {
@@ -341,8 +301,7 @@ void JobTask4(void *param) {
     monitor.jobEnded(4);
     xTaskNotifyGive(jobHandles[6]);
     taskYIELD();
-    xSemaphoreGive(mutex0);
-    // vTaskDelay(pdMS_TO_TICKS(1));
+    taskYIELD();
   }
 }
 
@@ -350,11 +309,7 @@ void JobTask4(void *param) {
 // Task 5, takes 0.5ms
 void JobTask5(void *param) {
   while (1) {
-    // Serial.println("task 5");
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    // Serial.println("task 5 notify");
-    xSemaphoreTake(mutex, portMAX_DELAY);
-    // Serial.println(5);
     monitor.jobStarted(5);
     monitor.doWork();
     doneList[4] = true;
@@ -362,7 +317,7 @@ void JobTask5(void *param) {
     monitor.jobEnded(5);
     xTaskNotifyGive(jobHandles[5]);
     taskYIELD();
-    xSemaphoreGive(mutex);
-    // vTaskDelay
+    taskYIELD();
+
   }
 }
