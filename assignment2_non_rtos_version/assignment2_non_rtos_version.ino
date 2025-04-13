@@ -29,7 +29,7 @@ volatile bool ButtonLedState = false;
 volatile int slackTimes[5] = { 3400, 2650, 7200, 7800, 4500 };      // Slack time (us) for each task
 volatile int jobCounts[5] = { 0, 0, 0, 0, 0 };                      // Count of task completions
 int executeTimes[5] = { 600, 350, 2800, 2200, 500 };                // Estimated execution time per task (us)
-int periodList[5] = { 4000, 3000, 10000, 10000, 5000 };              // Task execution periods (us)
+int periodList[5] = { 4000, 3000, 10000, 10000, 5000 };             // Task execution periods (us)
 volatile bool doneList[5] = { false, false, false, false, false };  // Track whether each task has been completed in current cycle
 
 // -------------------- SLACK TIME CALCULATION FUNCTION --------------------
@@ -54,7 +54,9 @@ void IRAM_ATTR buttonPressedHandle() {
   unsigned long currentTime = millis();
   if (currentTime - lastButtonInterruptTime > DEBOUNCE_DELAY) {
     ButtonLedState = !ButtonLedState;  // Toggle LED state
-    monitor.doWork();                  // Perform background work
+    // Set button LED based on button state
+    digitalWrite(BUTTON_LED_PIN, ButtonLedState ? HIGH : LOW);
+    monitor.doWork();  // Perform background work
     lastButtonInterruptTime = currentTime;
   }
 }
@@ -90,9 +92,6 @@ void setup() {
 
 // -------------------- MAIN LOOP --------------------
 void loop() {
-  // Set button LED based on button state
-  digitalWrite(BUTTON_LED_PIN, ButtonLedState ? HIGH : LOW);
-
   volatile int jobIndex = 10;  // Invalid default value
   volatile int minSlackTime = 100000;
 
