@@ -14,7 +14,7 @@
 #define LED_PIN 17
 #define BUTTON_PIN 16
 #define BUTTON_LED_PIN 32
-#define DEBOUNCE_DELAY 500
+#define DEBOUNCE_DELAY 500  // debounce delay in ms
 
 B31DGCyclicExecutiveMonitor monitor;
 
@@ -25,16 +25,19 @@ static bool last_F1_input_state = LOW;
 static bool last_F2_input_state = LOW;
 volatile bool ButtonLedState = false;
 
+// RTOS handles and synchronization primitives
 volatile SemaphoreHandle_t mutex, mutex0;
 TaskHandle_t jobHandles[7];
 volatile int jobIndex = 10;
 volatile bool jobDone = true;
 
-static int jobIds0[] = { 0, 1};
-static int jobIds1[] = { 2, 3 ,4 };
+// Job group IDs for scheduler
+static int jobIds0[] = { 0, 1 };
+static int jobIds1[] = { 2, 3, 4 };
 volatile int scheduledCount = 0;
 
 // -------------------- TASK SCHEDULING PARAMETERS --------------------
+// SlackTime = Period - ElapsedTime - ExecutionTime
 volatile int slackTimes[5] = { 3400, 2650, 7200, 7800, 4500 };
 volatile int jobCounts[5] = { 0, 0, 0, 0, 0 };
 int executeTimes[5] = { 600, 350, 2800, 2200, 500 };
@@ -58,17 +61,18 @@ void updateSlackTime() {
 
 // -------------------- BUTTON ISR --------------------
 void IRAM_ATTR buttonPressedHandle() {
+  // Debounce logic
   unsigned long currentTime = millis();
   if (currentTime - lastButtonInterruptTime > DEBOUNCE_DELAY) {
     ButtonLedState = !ButtonLedState;
-    monitor.doWork();
+    monitor.doWork();  // Trigger monitor work in response to button
     lastButtonInterruptTime = currentTime;
   }
 }
 
 // -------------------- SLACK TIME UPDATER TASK --------------------
 void slackTimeUpdate(void *pvParameters) {
-  const TickType_t interval = pdMS_TO_TICKS(1);  // 1ms
+  const TickType_t interval = pdMS_TO_TICKS(1);  // run every 1ms
   TickType_t lastWakeTime = xTaskGetTickCount();
   while (true) {
     updateSlackTime();
@@ -76,67 +80,56 @@ void slackTimeUpdate(void *pvParameters) {
   }
 }
 
-
-
-
-// -------------------- SCHEDULER TASK --------------------
+// -------------------- SCHEDULER TASK 1: selects task 0 or 1 --------------------
 void schedulerTask1(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-    volatile int jobIndex;
-    volatile int minSlack;
-    jobIndex =10;
-    minSlack =100000;
+    volatile int jobIndex = 10;
+    volatile int minSlack = 100000;
+
     for (int i = 0; i < sizeof(jobIds0) / sizeof(jobIds0[0]); i++) {
       if (!doneList[jobIds0[i]] && slackTimes[jobIds0[i]] < minSlack) {
         jobIndex = jobIds0[i];
         minSlack = slackTimes[jobIndex];
       }
     }
-    // Serial.print("jobIndex:");
-    // Serial.println(jobIndex);
+
     switch (jobIndex) {
-      case 0: xTaskNotifyGive(jobHandles[0]); taskYIELD();  break;
-      case 1: xTaskNotifyGive(jobHandles[1]); taskYIELD();  break;
-      // case 4: xTaskNotifyGive(jobHandles[4]); taskYIELD();break;
-      default:
-        // Serial.println("default");
-        xTaskNotifyGive(jobHandles[5]);
-        taskYIELD();
-        break;
+      case 0: xTaskNotifyGive(jobHandles[0]); taskYIELD(); break;
+      case 1: xTaskNotifyGive(jobHandles[1]); taskYIELD(); break;
+      default: xTaskNotifyGive(jobHandles[5]); taskYIELD(); break;
     }
   }
 }
 
-// -------------------- SCHEDULER TASK --------------------
+// -------------------- SCHEDULER TASK 2: selects task 2/3/4 --------------------
 void schedulerTask2(void *param) {
   while (1) {
-    ulTaskNotifyTake(pdTRUE, portMAX_DELAY); 
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     volatile int jobIndex = 10;
     volatile int minSlack = 1000000;
+
     for (int i = 0; i < sizeof(jobIds1) / sizeof(jobIds1[0]); i++) {
       if (!doneList[jobIds1[i]] && slackTimes[jobIds1[i]] < minSlack) {
         jobIndex = jobIds1[i];
         minSlack = slackTimes[jobIndex];
       }
     }
+
     switch (jobIndex) {
       case 2: xTaskNotifyGive(jobHandles[2]); break;
       case 3: xTaskNotifyGive(jobHandles[3]); break;
-      case 4: xTaskNotifyGive(jobHandles[4]); taskYIELD();break;
-      default:
-        xTaskNotifyGive(jobHandles[6]);
-        taskYIELD();
-        break;
+      case 4: xTaskNotifyGive(jobHandles[4]); taskYIELD(); break;
+      default: xTaskNotifyGive(jobHandles[6]); taskYIELD(); break;
     }
   }
 }
 
-
-
 // -------------------- SETUP FUNCTION --------------------
 void setup() {
   Serial.begin(9600);
+
+  // GPIO setup
   pinMode(OUTPUT_PIN_1, OUTPUT);
   pinMode(OUTPUT_PIN_2, OUTPUT);
   pinMode(INPUT_PIN_F1, INPUT);
@@ -146,7 +139,10 @@ void setup() {
   pinMode(BUTTON_PIN, INPUT_PULLDOWN);
   digitalWrite(LED_PIN, LOW);
   digitalWrite(BUTTON_LED_PIN, LOW);
+
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPressedHandle, RISING);
+
+  // Create tasks
   xTaskCreatePinnedToCore(slackTimeUpdate, "slackTimeUpdate", 2048, NULL, 1, NULL, 1);
   xTaskCreatePinnedToCore(JobTask1, "Job1", 4096, NULL, 1, &jobHandles[0], 1);
   xTaskCreatePinnedToCore(JobTask2, "Job2", 4096, NULL, 1, &jobHandles[1], 1);
@@ -155,51 +151,53 @@ void setup() {
   xTaskCreatePinnedToCore(JobTask5, "Job5", 4096, NULL, 1, &jobHandles[4], 1);
   xTaskCreatePinnedToCore(schedulerTask1, "schedulerTask1", 4096, NULL, 1, &jobHandles[5], 1);
   xTaskCreatePinnedToCore(schedulerTask2, "schedulerTask2", 4096, NULL, 1, &jobHandles[6], 1);
+
+  // Kickstart scheduler tasks
   xTaskNotifyGive(jobHandles[5]);
   xTaskNotifyGive(jobHandles[6]);
+
   monitor.startMonitoring();
 }
 
-// -------------------- MAIN LOOP (IDLE) --------------------
+// -------------------- LOOP --------------------
 void loop() {
-  // Empty loop, all tasks are handled via FreeRTOS
+  // All logic handled by tasks
 }
 
+// -------------------- JOB TASKS --------------------
 
+// Generate signal on OUTPUT_PIN_1
 void JobTask1(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(1);
-    digitalWrite(OUTPUT_PIN_1, HIGH);
-    delayMicroseconds(250);  // HIGH for 250μs
+
+    digitalWrite(OUTPUT_PIN_1, HIGH); delayMicroseconds(250);
+    digitalWrite(OUTPUT_PIN_1, LOW);  delayMicroseconds(50);
+    digitalWrite(OUTPUT_PIN_1, HIGH); delayMicroseconds(300);
     digitalWrite(OUTPUT_PIN_1, LOW);
-    delayMicroseconds(50);  // LOW for 50μs
-    digitalWrite(OUTPUT_PIN_1, HIGH);
-    delayMicroseconds(300);  // HIGH for 300μs
-    digitalWrite(OUTPUT_PIN_1, LOW);
+
     doneList[0] = true;
-    jobCounts[0] = jobCounts[0] + 1;
+    jobCounts[0]++;
     monitor.jobEnded(1);
     xTaskNotifyGive(jobHandles[5]);
-    taskYIELD();
     taskYIELD();
   }
 }
 
-// Task 2, takes 1.8ms
+// Generate signal on OUTPUT_PIN_2
 void JobTask2(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(2);
-    digitalWrite(OUTPUT_PIN_2, HIGH);
-    delayMicroseconds(100);
+
+    digitalWrite(OUTPUT_PIN_2, HIGH); delayMicroseconds(100);
+    digitalWrite(OUTPUT_PIN_2, LOW);  delayMicroseconds(50);
+    digitalWrite(OUTPUT_PIN_2, HIGH); delayMicroseconds(200);
     digitalWrite(OUTPUT_PIN_2, LOW);
-    delayMicroseconds(50);
-    digitalWrite(OUTPUT_PIN_2, HIGH);
-    delayMicroseconds(200);
-    digitalWrite(OUTPUT_PIN_2, LOW);
+
     doneList[1] = true;
-    jobCounts[1] = jobCounts[1] + 1;
+    jobCounts[1]++;
     monitor.jobEnded(2);
     xTaskNotifyGive(jobHandles[5]);
     taskYIELD();
@@ -207,7 +205,10 @@ void JobTask2(void *param) {
 }
 
 
-// Task 3, takes 1ms
+
+
+
+// Measure F1 input frequency
 void JobTask3(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
@@ -250,7 +251,7 @@ void JobTask3(void *param) {
   }
 }
 
-// Task 4, takes about 600-2200us
+// Measure F2 input frequency
 void JobTask4(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
