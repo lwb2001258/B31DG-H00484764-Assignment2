@@ -43,11 +43,9 @@ volatile int jobCounts[5] = { 0, 0, 0, 0, 0 };
 int executeTimes[5] = { 600, 350, 2800, 2200, 500 };
 int periodList[5] = { 4000, 3000, 10000, 10000, 5000 };
 volatile bool doneList[5] = { false, false, false, false, false };
-int count = 0;
 
 // -------------------- SLACK TIME CALCULATION FUNCTION --------------------
 void updateSlackTime() {
-  count += 1;
   unsigned long now = esp_timer_get_time();
   unsigned long totalTime = now - monitor.getTimeStart();
   for (int i = 0; i < 5; i++) {
@@ -175,11 +173,10 @@ void setup() {
 }
 
 // -------------------- LOOP --------------------
-void loop() {
-  // All logic handled by tasks
+void loop() {  
   UBaseType_t highWater = uxTaskGetStackHighWaterMark(NULL);
   Serial.printf("Remaining stack: %u\n", highWater);
-  delay(1000);
+  delay(5000);
 }
 
 // -------------------- JOB TASKS --------------------
@@ -230,9 +227,10 @@ void JobTask2(void *param) {
 
 // Measure F1 input frequency
 void JobTask3(void *param) {
-  while (1) {
+  while (1) {  
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(3);
+   int count=0;
     while (1) {
       bool input_state = digitalRead(INPUT_PIN_F1);
       if (last_F1_input_state == LOW && input_state == LOW) {
@@ -271,12 +269,13 @@ void JobTask3(void *param) {
   }
 }
 
-  // Measure F2 input frequency
-  void  JobTask4(void *param) {
+// Measure F2 input frequency
+void JobTask4(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(4);
     int count = 0;
+    
     while (1) {
       // taskENTER_CRITICAL(&myMux);
       bool input_state = digitalRead(INPUT_PIN_F2);
