@@ -56,7 +56,6 @@ void updateSlackTime() {
       slackTimes[i] = periodList[i] - totalTime % periodList[i] - executeTimes[i];
     }
   }
-  
 }
 
 // -------------------- BUTTON ISR --------------------
@@ -229,10 +228,6 @@ void JobTask2(void *param) {
   }
 }
 
-
-
-
-
 // Measure F1 input frequency
 void JobTask3(void *param) {
   while (1) {
@@ -276,8 +271,8 @@ void JobTask3(void *param) {
   }
 }
 
-// Measure F2 input frequency
-void JobTask4(void *param) {
+  // Measure F2 input frequency
+  void  JobTask4(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(4);

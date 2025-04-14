@@ -2,14 +2,16 @@
 #include <Ticker.h>        // Allows periodic function calls via timers
 
 // -------------------- PIN DEFINITIONS --------------------
-#define OUTPUT_PIN_1 26     // Digital output pin for Task 1
-#define OUTPUT_PIN_2 27     // Digital output pin for Task 2
-#define INPUT_PIN_F1 25     // Digital input pin to measure frequency F1 (Task 3)
-#define INPUT_PIN_F2 33     // Digital input pin to measure frequency F2 (Task 4)
-#define LED_PIN 17          // LED that lights up if F1 + F2 exceeds threshold
-#define BUTTON_PIN 16       // Pushbutton input for triggering Task 5
-#define BUTTON_LED_PIN 32   // LED toggled on button press
-#define DEBOUNCE_DELAY 500  // Debounce time for button press (in ms)
+#define OUTPUT_PIN_1 26      // Digital output pin for Task 1
+#define OUTPUT_PIN_2 27      // Digital output pin for Task 2
+#define INPUT_PIN_F1 25      // Digital input pin to measure frequency F1 (Task 3)
+#define INPUT_PIN_F2 33      // Digital input pin to measure frequency F2 (Task 4)
+#define LED_PIN 17           // LED that lights up if F1 + F2 exceeds threshold
+#define BUTTON_PIN 16        // Pushbutton input for triggering Task 5
+#define BUTTON_LED_PIN 32    // LED toggled on button press
+#define DEBOUNCE_DELAY 500   // Debounce time for button press (in ms)
+#define FRAME_DURATION_MS 1  // 2ms per frame
+#define TOTAL_SLOTS 60       // 60 slots => 60 * 2ms = 120ms hyperperiod
 
 // -------------------- OBJECT INITIALIZATION --------------------
 B31DGCyclicExecutiveMonitor monitor;  // Real-time task monitor
@@ -61,6 +63,142 @@ void IRAM_ATTR buttonPressedHandle() {
   }
 }
 
+
+
+volatile unsigned long frameCounter = 0;
+// B31DGCyclicExecutiveMonitor monitor;
+// int frame_count = 0;
+void frame() {
+  // frame_count++;
+  frameCounter++;
+  // unsigned int jobPassTime = micros() - monitor.getTimeStart();
+
+  unsigned int slot = frameCounter % TOTAL_SLOTS;
+ 
+
+
+
+
+  switch (slot) {
+    case 0:
+      JobTask2();
+      JobTask5();
+      break;
+    case 1:
+      JobTask3();
+      JobTask1();
+      break;
+    case 2: break;
+    case 3: break;
+    case 4: JobTask2(); break;
+    case 5:
+      JobTask4();
+      JobTask1();
+      break;
+    case 6: break;
+    case 7: break;
+    case 8:
+      JobTask2();
+      JobTask5();
+      break;
+    case 9: JobTask1(); break;
+    case 10: JobTask2(); break;
+    case 11:
+      JobTask5();
+      JobTask3();
+      break;
+    case 12: break;
+    case 13: JobTask2(); break;
+    case 14: JobTask1(); break;
+    case 15: JobTask4(); break;
+    case 16: break;
+    case 17: JobTask2(); break;
+    case 18: JobTask1(); break;
+    case 19: JobTask5(); break;
+    case 20:
+      JobTask2();
+      JobTask4();
+      break;
+    case 21: break;
+    case 22:
+      JobTask1();
+      break;
+    case 23:
+      JobTask2();
+      JobTask5();
+      break;
+    case 24: JobTask1(); break;
+    case 25:
+      JobTask2();
+      JobTask3();
+      break;
+    case 26: break;
+    case 27: break;
+    case 28:
+      JobTask2();
+      JobTask5();
+      break;
+    case 29: JobTask1(); break;
+    case 30:
+      JobTask2();
+      JobTask3();
+      break;
+    case 31: break;
+    case 32: break;
+    case 33:
+      JobTask2();
+      JobTask5();
+      break;
+    case 34: JobTask1(); break;
+    case 35: JobTask4(); break;
+    case 36: break;
+    case 37: JobTask2(); break;
+    case 38: JobTask1(); break;
+    case 39:
+      JobTask2();
+      JobTask5();
+      break;
+    case 40:
+      JobTask1();
+      JobTask3();
+      break;
+    case 41: break;
+    case 42: break;
+    case 43:
+      JobTask2();
+      JobTask5();
+      break;
+    case 44: JobTask1(); break;
+    case 45:
+      JobTask2();
+      JobTask5();
+      break;
+    case 46: JobTask4(); break;
+    case 47: break;
+    case 48: JobTask2(); break;
+    case 49: JobTask1(); break;
+    case 50: JobTask5(); break;
+    case 51:
+      JobTask2();
+      JobTask3();
+      break;
+    case 52: break;
+    case 53: break;
+    case 54: JobTask1(); break;
+    case 55:
+      JobTask2();
+      JobTask5();
+      break;
+    case 56: JobTask4(); break;
+    case 57: JobTask1(); break;
+    case 58: JobTask2(); break;
+    case 59:
+      break;
+    default:break;
+  }
+}
+
+
 // -------------------- SETUP FUNCTION --------------------
 void setup() {
   Serial.begin(9600);
@@ -83,41 +221,46 @@ void setup() {
   // Attach interrupt for button
   attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonPressedHandle, RISING);
 
-  // Start slack time update every 1 ms
-  ticker1.attach_ms(1, updateSlackTime);
 
+
+  ticker1.attach_ms(1, frame);
   // Start the monitor
   monitor.startMonitoring();
+  JobTask2();
+  JobTask5();
 }
 
 // -------------------- MAIN LOOP --------------------
 void loop() {
-  volatile int jobIndex = 10;  // Invalid default value
-  volatile int minSlackTime = 100000;
+  delay(1000);
+  // frame();
 
-  // Select the task with the least slack that hasn't been executed yet
-  for (int i = 0; i < 5; i++) {
-    if (!doneList[i]) {
-      if (slackTimes[i] < minSlackTime) {
-        jobIndex = i;
-        minSlackTime = slackTimes[i];
-      }
-    }
-  }
+  // volatile int jobIndex = 10;  // Invalid default value
+  // volatile int minSlackTime = 100000;
 
-  // Execute selected task
-  switch (jobIndex) {
-    case 0: JobTask1(); break;
-    case 1: JobTask2(); break;
-    case 2: JobTask3(); break;
-    case 3: JobTask4(); break;
-    case 4: JobTask5(); break;
-    default: break;
-  }
-  if (jobIndex < 5) {
-    doneList[jobIndex] = true;
-    jobCounts[jobIndex]++;
-  }
+  // // Select the task with the least slack that hasn't been executed yet
+  // for (int i = 0; i < 5; i++) {
+  //   if (!doneList[i]) {
+  //     if (slackTimes[i] < minSlackTime) {
+  //       jobIndex = i;
+  //       minSlackTime = slackTimes[i];
+  //     }
+  //   }
+  // }
+
+  // // Execute selected task
+  // switch (jobIndex) {
+  //   case 0: JobTask1(); break;
+  //   case 1: JobTask2(); break;
+  //   case 2: JobTask3(); break;
+  //   case 3: JobTask4(); break;
+  //   case 4: JobTask5(); break;
+  //   default: break;
+  // }
+  // if (jobIndex < 5) {
+  //   doneList[jobIndex] = true;
+  //   jobCounts[jobIndex]++;
+  // }
 }
 
 // -------------------- TASK DEFINITIONS --------------------
@@ -146,6 +289,17 @@ void JobTask2(void) {
   monitor.jobEnded(2);
 }
 
+// void JobTask3(void){
+//   monitor.jobStarted(3);
+//   unsigned long start=micros();
+// unsigned long duration = pulseIn(INPUT_PIN_F1, HIGH);  // in microseconds
+// F1 = 1000000.0 / (2 * duration);
+// unsigned long end=micros();
+// Serial.print("time:");
+// Serial.println(end-start);
+// monitor.jobEnded(3);
+// }
+
 // void JobTask3(void) {
 //   monitor.jobStarted(3);
 //   int count = 0;
@@ -171,23 +325,30 @@ void JobTask2(void) {
 //   }
 //   monitor.jobEnded(3);
 // }
-
 void JobTask3(void) {
   monitor.jobStarted(3);
+  // unsigned long start=micros();
   unsigned long duration_f1 = pulseIn(INPUT_PIN_F1, HIGH);  // in microseconds
   F1 = 1000000.0 / (2 * duration_f1);
-  F = F1 + F2;  
+  F = F1 + F2;
   digitalWrite(LED_PIN, F > 1500 ? HIGH : LOW);
-    monitor.jobEnded(3);
+  // unsigned long end=micros();
+  // Serial.print("time:");
+  // Serial.println(end-start);
+  monitor.jobEnded(3);
 }
 
 void JobTask4(void) {
   monitor.jobStarted(4);
+  // unsigned long start=micros();
   unsigned long duration_f2 = pulseIn(INPUT_PIN_F2, HIGH);  // in microseconds
   F2 = 1000000.0 / (2 * duration_f2);
-  F = F1 + F2;  
+  F = F1 + F2;
   digitalWrite(LED_PIN, F > 1500 ? HIGH : LOW);
-   monitor.jobEnded(4);
+  // unsigned long end=micros();
+  // Serial.print("time:");
+  // Serial.println(end-start);
+  monitor.jobEnded(4);
 }
 
 // void JobTask4(void) {
