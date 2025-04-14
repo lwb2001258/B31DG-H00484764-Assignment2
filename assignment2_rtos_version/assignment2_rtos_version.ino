@@ -14,7 +14,7 @@
 #define LED_PIN 17
 #define BUTTON_PIN 16
 #define BUTTON_LED_PIN 32
-#define DEBOUNCE_DELAY 500  // debounce delay in ms
+#define DEBOUNCE_DELAY 200  // debounce delay in ms
 
 B31DGCyclicExecutiveMonitor monitor;
 
@@ -42,7 +42,7 @@ volatile int slackTimes[5] = { 3400, 2650, 7200, 7800, 4500 };
 volatile int jobCounts[5] = { 0, 0, 0, 0, 0 };
 int executeTimes[5] = { 600, 350, 2800, 2200, 500 };
 int periodList[5] = { 4000, 3000, 10000, 10000, 5000 };
-volatile bool doneList[5] = { false, false, false, false, false };
+volatile bool doneList[5] = { false, false, false, false, false };  //whether the job is completed in the current peroid
 
 // -------------------- SLACK TIME CALCULATION FUNCTION --------------------
 void updateSlackTime() {
@@ -74,7 +74,7 @@ void ScheduleSlackTimeUpdate(void *pvParameters) {
   TickType_t lastWakeTime = xTaskGetTickCount();
   while (true) {
     updateSlackTime();
-    vTaskDelayUntil(&lastWakeTime, interval);
+    vTaskDelayUntil(&lastWakeTime, interval);  //schedule every 1 ms
   }
 }
 
@@ -159,9 +159,9 @@ void setup() {
   xTaskCreatePinnedToCore(JobTask2, "Job2", 4096, NULL, 3, &jobHandles[1], 1);
   xTaskCreatePinnedToCore(JobTask3, "Job3", 4096, NULL, 3, &jobHandles[2], 0);
   xTaskCreatePinnedToCore(JobTask4, "Job4", 4096, NULL, 3, &jobHandles[3], 0);
-  xTaskCreatePinnedToCore(JobTask5, "Job5", 4096, NULL, 1, &jobHandles[4], 1);
-  xTaskCreatePinnedToCore(schedulerTaskCore1, "schedulerTaskCore1", 4096, NULL, 1, &jobHandles[5], 1);
-  xTaskCreatePinnedToCore(schedulerTaskCore0, "schedulerTaskCore0", 4096, NULL, 1, &jobHandles[6], 1);
+  xTaskCreatePinnedToCore(JobTask5, "Job5", 2048, NULL, 1, &jobHandles[4], 1);
+  xTaskCreatePinnedToCore(schedulerTaskCore1, "schedulerTaskCore1", 2048, NULL, 1, &jobHandles[5], 1);
+  xTaskCreatePinnedToCore(schedulerTaskCore0, "schedulerTaskCore0", 2048, NULL, 1, &jobHandles[6], 1);
 
   // Kickstart scheduler tasks
   xTaskNotifyGive(jobHandles[5]);
@@ -171,7 +171,7 @@ void setup() {
 }
 
 // -------------------- LOOP --------------------
-void loop() {  
+void loop() {
   UBaseType_t highWater = uxTaskGetStackHighWaterMark(NULL);
   Serial.printf("Remaining stack: %u\n", highWater);
   delay(5000);
@@ -225,10 +225,10 @@ void JobTask2(void *param) {
 
 // Measure F1 input frequency
 void JobTask3(void *param) {
-  while (1) {  
+  while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(3);
-   int count=0;
+    int count = 0;
     while (1) {
       bool input_state = digitalRead(INPUT_PIN_F1);
       if (last_F1_input_state == LOW && input_state == LOW) {
@@ -272,7 +272,7 @@ void JobTask4(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(4);
-    int count = 0;    
+    int count = 0;
     while (1) {
       // taskENTER_CRITICAL(&myMux);
       bool input_state = digitalRead(INPUT_PIN_F2);

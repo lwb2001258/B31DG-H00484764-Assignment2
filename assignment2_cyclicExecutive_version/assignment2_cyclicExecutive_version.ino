@@ -9,7 +9,7 @@
 #define LED_PIN 17           // LED that lights up if F1 + F2 exceeds threshold
 #define BUTTON_PIN 16        // Pushbutton input for triggering Task 5
 #define BUTTON_LED_PIN 32    // LED toggled on button press
-#define DEBOUNCE_DELAY 500   // Debounce time for button press (in ms)
+#define DEBOUNCE_DELAY 200   // Debounce time for button press (in ms)
 #define TOTAL_SLOTS 60       // 60 slots => 60 * 1ms = 120ms hyperperiod
 
 // -------------------- OBJECT INITIALIZATION --------------------
