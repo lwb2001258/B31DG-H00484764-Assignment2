@@ -10,8 +10,8 @@
 #define BUTTON_PIN 16        // Pushbutton input for triggering Task 5
 #define BUTTON_LED_PIN 32    // LED toggled on button press
 #define DEBOUNCE_DELAY 500   // Debounce time for button press (in ms)
-#define FRAME_DURATION_MS 1  // 2ms per frame
-#define TOTAL_SLOTS 60       // 60 slots => 60 * 2ms = 120ms hyperperiod
+#define FRAME_DURATION_MS 1  // 1ms per frame
+#define TOTAL_SLOTS 60       // 60 slots => 60 * 1ms = 120ms hyperperiod
 
 // -------------------- OBJECT INITIALIZATION --------------------
 B31DGCyclicExecutiveMonitor monitor;  // Real-time task monitor
@@ -19,37 +19,8 @@ Ticker ticker1;                       // Used to call slack time updater every 1
 
 // -------------------- FREQUENCY VARIABLES --------------------
 unsigned long F1, F2, F;  // Frequencies for Task 3, Task 4, and their sum
-
-// -------------------- EDGE DETECTION VARIABLES --------------------
-unsigned long lastF1EdgeTime, lastF2EdgeTime;
-volatile uint64_t lastButtonInterruptTime = 0;
-static bool last_F1_input_state = LOW;
-static bool last_F2_input_state = LOW;
-volatile bool ButtonLedState = false;
-
-// -------------------- TASK TIMING AND SCHEDULING --------------------
-volatile int slackTimes[5] = { 3400, 2650, 7200, 7800, 4500 };      // Slack time (us) for each task
-volatile int jobCounts[5] = { 0, 0, 0, 0, 0 };                      // Count of task completions
-int executeTimes[5] = { 600, 350, 2800, 2200, 500 };                // Estimated execution time per task (us)
-int periodList[5] = { 4000, 3000, 10000, 10000, 5000 };             // Task execution periods (us)
-volatile bool doneList[5] = { false, false, false, false, false };  // Track whether each task has been completed in current cycle
-
-// -------------------- SLACK TIME CALCULATION FUNCTION --------------------
-void updateSlackTime() {
-  /*
-    Updates slack time for each task based on current time.
-    Slack = time until deadline - estimated execution time.
-  */
-  volatile unsigned long now = micros();
-  volatile unsigned long totalTime = now - monitor.getTimeStart();
-
-  for (int i = 0; i < 5; i++) {
-    if ((int)(totalTime / periodList[i]) + 1 > jobCounts[i]) {
-      doneList[i] = false;
-      slackTimes[i] = periodList[i] - (totalTime % periodList[i]) - executeTimes[i];
-    }
-  }
-}
+volatile long lastButtonInterruptTime; // define the last interupt time for the button
+volatile bool ButtonLedState=false; // initial the ButtonLedState to false;
 
 // -------------------- BUTTON INTERRUPT HANDLER --------------------
 void IRAM_ATTR buttonPressedHandle() {
@@ -69,16 +40,8 @@ volatile unsigned long frameCounter = 0;
 // B31DGCyclicExecutiveMonitor monitor;
 // int frame_count = 0;
 void frame() {
-  // frame_count++;
   frameCounter++;
-  // unsigned int jobPassTime = micros() - monitor.getTimeStart();
-
   unsigned int slot = frameCounter % TOTAL_SLOTS;
- 
-
-
-
-
   switch (slot) {
     case 0:
       JobTask2();
@@ -232,35 +195,8 @@ void setup() {
 
 // -------------------- MAIN LOOP --------------------
 void loop() {
-  delay(1000);
-  // frame();
-
-  // volatile int jobIndex = 10;  // Invalid default value
-  // volatile int minSlackTime = 100000;
-
-  // // Select the task with the least slack that hasn't been executed yet
-  // for (int i = 0; i < 5; i++) {
-  //   if (!doneList[i]) {
-  //     if (slackTimes[i] < minSlackTime) {
-  //       jobIndex = i;
-  //       minSlackTime = slackTimes[i];
-  //     }
-  //   }
-  // }
-
-  // // Execute selected task
-  // switch (jobIndex) {
-  //   case 0: JobTask1(); break;
-  //   case 1: JobTask2(); break;
-  //   case 2: JobTask3(); break;
-  //   case 3: JobTask4(); break;
-  //   case 4: JobTask5(); break;
-  //   default: break;
-  // }
-  // if (jobIndex < 5) {
-  //   doneList[jobIndex] = true;
-  //   jobCounts[jobIndex]++;
-  // }
+  
+  
 }
 
 // -------------------- TASK DEFINITIONS --------------------
@@ -289,93 +225,25 @@ void JobTask2(void) {
   monitor.jobEnded(2);
 }
 
-// void JobTask3(void){
-//   monitor.jobStarted(3);
-//   unsigned long start=micros();
-// unsigned long duration = pulseIn(INPUT_PIN_F1, HIGH);  // in microseconds
-// F1 = 1000000.0 / (2 * duration);
-// unsigned long end=micros();
-// Serial.print("time:");
-// Serial.println(end-start);
-// monitor.jobEnded(3);
-// }
 
-// void JobTask3(void) {
-//   monitor.jobStarted(3);
-//   int count = 0;
-//   while (1) {
-//     bool input_state = digitalRead(INPUT_PIN_F1);
-//     if ((last_F1_input_state == LOW && input_state == LOW) || (last_F1_input_state == HIGH && input_state == HIGH) || (last_F1_input_state == HIGH && input_state == LOW)) {
-//       last_F1_input_state = input_state;
-//       continue;
-//     }
-//     if (input_state == HIGH && last_F1_input_state == LOW) {
-//       count++;
-//       last_F1_input_state = input_state;
-//       unsigned long now_edge = micros();
-//       unsigned long period = now_edge - lastF1EdgeTime;
-//       lastF1EdgeTime = now_edge;
-//       if (period > 0 && count > 1) {
-//         F1 = 1000000UL / period;
-//         F = F1 + F2;
-//         digitalWrite(LED_PIN, F > 1600 ? HIGH : LOW);
-//         break;
-//       }
-//     }
-//   }
-//   monitor.jobEnded(3);
-// }
 void JobTask3(void) {
   monitor.jobStarted(3);
-  // unsigned long start=micros();
-  unsigned long duration_f1 = pulseIn(INPUT_PIN_F1, HIGH);  // in microseconds
+  unsigned long duration_f1 = pulseIn(INPUT_PIN_F1, HIGH); 
   F1 = 1000000.0 / (2 * duration_f1);
   F = F1 + F2;
   digitalWrite(LED_PIN, F > 1500 ? HIGH : LOW);
-  // unsigned long end=micros();
-  // Serial.print("time:");
-  // Serial.println(end-start);
   monitor.jobEnded(3);
 }
 
 void JobTask4(void) {
   monitor.jobStarted(4);
-  // unsigned long start=micros();
-  unsigned long duration_f2 = pulseIn(INPUT_PIN_F2, HIGH);  // in microseconds
+  unsigned long duration_f2 = pulseIn(INPUT_PIN_F2, HIGH);  
   F2 = 1000000.0 / (2 * duration_f2);
   F = F1 + F2;
   digitalWrite(LED_PIN, F > 1500 ? HIGH : LOW);
-  // unsigned long end=micros();
-  // Serial.print("time:");
-  // Serial.println(end-start);
   monitor.jobEnded(4);
 }
 
-// void JobTask4(void) {
-//   monitor.jobStarted(4);
-//   int count = 0;
-//   while (1) {
-//     bool input_state = digitalRead(INPUT_PIN_F2);
-//     if ((last_F2_input_state == LOW && input_state == LOW) || (last_F2_input_state == HIGH && input_state == HIGH) || (last_F2_input_state == HIGH && input_state == LOW)) {
-//       last_F2_input_state = input_state;
-//       continue;
-//     }
-//     if (input_state == HIGH && last_F2_input_state == LOW) {
-//       count++;
-//       last_F2_input_state = input_state;
-//       unsigned long now_edge = micros();
-//       unsigned long period = now_edge - lastF2EdgeTime;
-//       lastF2EdgeTime = now_edge;
-//       if (period > 0 && count > 1) {
-//         F2 = 1000000UL / period;
-//         F = F1 + F2;  // (FIXED: previously F2 + F2)
-//         digitalWrite(LED_PIN, F > 1500 ? HIGH : LOW);
-//         break;
-//       }
-//     }
-//   }
-//   monitor.jobEnded(4);
-// }
 
 void JobTask5(void) {
   monitor.jobStarted(5);
