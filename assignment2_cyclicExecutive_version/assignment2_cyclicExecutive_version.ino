@@ -10,7 +10,6 @@
 #define BUTTON_PIN 16        // Pushbutton input for triggering Task 5
 #define BUTTON_LED_PIN 32    // LED toggled on button press
 #define DEBOUNCE_DELAY 500   // Debounce time for button press (in ms)
-#define FRAME_DURATION_MS 1  // 1ms per frame
 #define TOTAL_SLOTS 60       // 60 slots => 60 * 1ms = 120ms hyperperiod
 
 // -------------------- OBJECT INITIALIZATION --------------------

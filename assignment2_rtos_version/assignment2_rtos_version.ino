@@ -84,14 +84,12 @@ void schedulerTaskCore1(void *param) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     volatile int jobIndex = 10;
     volatile int minSlack = 100000;
-
     for (int i = 0; i < sizeof(jobIds0) / sizeof(jobIds0[0]); i++) {
       if (!doneList[jobIds0[i]] && slackTimes[jobIds0[i]] < minSlack) {
         jobIndex = jobIds0[i];
         minSlack = slackTimes[jobIndex];
       }
     }
-
     switch (jobIndex) {
       case 0:
         xTaskNotifyGive(jobHandles[0]);
@@ -274,8 +272,7 @@ void JobTask4(void *param) {
   while (1) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     monitor.jobStarted(4);
-    int count = 0;
-    
+    int count = 0;    
     while (1) {
       // taskENTER_CRITICAL(&myMux);
       bool input_state = digitalRead(INPUT_PIN_F2);
